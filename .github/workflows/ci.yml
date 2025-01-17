@@ -302,3 +302,34 @@ jobs:
         working-directory: ${{ github.workspace }}/build
         run: ctest --output-on-failure
         if: ${{ matrix.config.name != 'DEB Package' }}
+
+  analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y python3 python3-pip clang
+          pip3 install codechecker
+
+      - name: Run CodeChecker analysis
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cd ..
+          CodeChecker analyze build/compile_commands.json --output-dir ./reports
+
+      - name: Generate HTML report
+        run: |
+          CodeChecker parse ./reports --export html --output ./html_reports
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: codechecker-reports
+          path: ./html_reports
